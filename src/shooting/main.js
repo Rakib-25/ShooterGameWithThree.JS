@@ -1,14 +1,14 @@
-import * as THREE from 'three';
-import { ShootingTarget } from './components/target.js';
-import { createScene } from './components/scene.js';
-import { createCamera } from './components/camera.js';
+import * as THREE from "three";
+import { ShootingTarget } from "./components/target.js";
+import { createScene } from "./components/scene.js";
+import { createCamera } from "./components/camera.js";
 import {
   createAmbientLight,
   createDirectionalLight,
   createHemisphereLight,
   createPointLight,
-} from './components/light.js';
-import { Ground } from './components/ground.js';
+} from "./components/light.js";
+import { Ground } from "./components/ground.js";
 window.THREE = THREE;
 
 // Main variables
@@ -27,11 +27,11 @@ let isOnGround = true;
 let jumpRequested = false;
 
 // DOM elements
-const loadingScreen = document.getElementById('loading');
-const startScreen = document.getElementById('start-screen');
-const startButton = document.getElementById('start-button');
-const infoPanel = document.getElementById('info');
-const controlsPanel = document.getElementById('controls');
+const loadingScreen = document.getElementById("loading");
+const startScreen = document.getElementById("start-screen");
+const startButton = document.getElementById("start-button");
+const infoPanel = document.getElementById("info");
+const controlsPanel = document.getElementById("controls");
 
 // Initialize the scene
 function init() {
@@ -46,7 +46,7 @@ function init() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  document.getElementById('container').appendChild(renderer.domElement);
+  document.getElementById("container").appendChild(renderer.domElement);
 
   // Add lighting
   addLighting();
@@ -59,10 +59,10 @@ function init() {
 
   // Hide loading screen
   setTimeout(() => {
-    loadingScreen.style.opacity = '0';
+    loadingScreen.style.opacity = "0";
     setTimeout(() => {
-      loadingScreen.style.display = 'none';
-      startScreen.style.display = 'flex';
+      loadingScreen.style.display = "none";
+      startScreen.style.display = "flex";
     }, 500);
   }, 1500);
 }
@@ -92,26 +92,67 @@ function createEnvironment() {
   scene.add(target);
 }
 
-// Set up event listeners
+function createArrow() {
+  const geometry = new THREE.CylinderGeometry(0.05, 0.05, 2, 8);
+  const material = new THREE.MeshStandardMaterial({ color: 0xcccc00 });
+  const arrow = new THREE.Mesh(geometry, material);
+  arrow.castShadow = true;
+  arrow.receiveShadow = true;
+  // Point the arrow forward (z axis)
+  geometry.rotateX(Math.PI / 2); // Align cylinder to point forward
+  return arrow;
+}
+
+let arrows = [];
+
+function shootArrow() {
+  const arrow = createArrow();
+
+
+
+  // Step 2: Start at camera position
+  arrow.position.copy(camera.position);
+
+  // Step 3: Get camera forward direction
+  const direction = new THREE.Vector3();
+  camera.getWorldDirection(direction);
+
+  // Step 4: Look in the same direction as the camera
+  const target = camera.position.clone().add(direction);
+  // console.log("Shooting arrow from", camera.position, "to", target);
+  arrow.lookAt(target); // THIS handles both horizontal and vertical alignment
+
+  // arrow.rotateOnWorldAxis(new THREE.Vector3(1, 0, 0), -(Math.PI / 2)); // Rotate around X to align cylinder length with forward direction
+
+  // Step 5: Set velocity to move in that direction
+  arrow.userData.velocity = direction.clone().multiplyScalar(1); // adjust speed
+
+  // Add to scene
+  scene.add(arrow);
+  arrows.push(arrow);
+}
+
+
+// Set up event listeners  arrow.rotation.z = -Math.atan2(dir.x, dir.z); // Rotate around Z to align forward direction
 function setupEventListeners() {
   // Start button
-  startButton.addEventListener('click', () => {
-    startScreen.style.display = 'none';
-    infoPanel.style.opacity = '0.5';
-    controlsPanel.style.opacity = '0.5';
+  startButton.addEventListener("click", () => {
+    startScreen.style.display = "none";
+    infoPanel.style.opacity = "0.5";
+    controlsPanel.style.opacity = "0.5";
     renderer.domElement.requestPointerLock();
   });
 
   // Pointer lock change event
-  document.addEventListener('pointerlockchange', () => {
+  document.addEventListener("pointerlockchange", () => {
     if (document.pointerLockElement === renderer.domElement) {
-      infoPanel.style.opacity = '0.5';
-      controlsPanel.style.opacity = '0.5';
-      document.addEventListener('mousemove', onMouseMove);
+      infoPanel.style.opacity = "0.5";
+      controlsPanel.style.opacity = "0.5";
+      document.addEventListener("mousemove", onMouseMove);
     } else {
-      infoPanel.style.opacity = '1';
-      controlsPanel.style.opacity = '1';
-      document.removeEventListener('mousemove', onMouseMove);
+      infoPanel.style.opacity = "1";
+      controlsPanel.style.opacity = "1";
+      document.removeEventListener("mousemove", onMouseMove);
     }
   });
 
@@ -120,33 +161,39 @@ function setupEventListeners() {
     yaw -= event.movementX * sensitivity;
     pitch -= event.movementY * sensitivity;
     pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
-    camera.rotation.set(pitch, yaw, 0, 'YXZ');
+    camera.rotation.set(pitch, yaw, 0, "YXZ");
   }
 
   // Keyboard events
-  window.addEventListener('keydown', (event) => {
+  window.addEventListener("keydown", (event) => {
     const key = event.key.toLowerCase();
     keyState[key] = true;
 
-    if (key === ' ' && isOnGround) {
+    if (key === " " && isOnGround) {
       jumpRequested = true;
     }
 
     // Toggle pointer lock with Enter key
-    if (key === 'enter' && !document.pointerLockElement) {
+    if (key === "enter" && !document.pointerLockElement) {
       renderer.domElement.requestPointerLock();
     }
   });
 
-  window.addEventListener('keyup', (event) => {
+  window.addEventListener("keyup", (event) => {
     keyState[event.key.toLowerCase()] = false;
   });
 
   // Window resize
-  window.addEventListener('resize', () => {
+  window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  renderer.domElement.addEventListener("mousedown", (event) => {
+    if (document.pointerLockElement === renderer.domElement) {
+      shootArrow();
+    }
   });
 }
 
@@ -166,21 +213,21 @@ function handleMovement(delta) {
 
   // Movement speed
   let moveSpeed = 0.01;
-  if (keyState['shift']) {
+  if (keyState["shift"]) {
     moveSpeed *= 2; // Sprint when shift is held
   }
 
   // Apply movement based on key state
-  if (keyState['w']) {
+  if (keyState["w"]) {
     velocity.add(forward.multiplyScalar(moveSpeed * delta * 60));
   }
-  if (keyState['s']) {
+  if (keyState["s"]) {
     velocity.add(forward.multiplyScalar(-moveSpeed * delta * 60));
   }
-  if (keyState['a']) {
+  if (keyState["a"]) {
     velocity.add(right.multiplyScalar(-moveSpeed * delta * 60));
   }
-  if (keyState['d']) {
+  if (keyState["d"]) {
     velocity.add(right.multiplyScalar(moveSpeed * delta * 60));
   }
 
@@ -217,13 +264,21 @@ function handleMovement(delta) {
 function animate() {
   requestAnimationFrame(animate);
 
-  // Calculate time delta for smooth movement
   const delta = Math.min(0.1, clock.getDelta());
 
-  // Handle camera movement
   handleMovement(delta);
 
-  // Render scene
+  // Move arrows
+  for (let i = arrows.length - 1; i >= 0; i--) {
+    const arrow = arrows[i];
+    arrow.position.add(arrow.userData.velocity.clone().multiplyScalar(delta * 20));
+    // Remove arrow if too far
+    if (arrow.position.distanceTo(camera.position) > 100) {
+      scene.remove(arrow);
+      arrows.splice(i, 1);
+    }
+  }
+
   renderer.render(scene, camera);
 }
 
