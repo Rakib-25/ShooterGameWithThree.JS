@@ -5,7 +5,8 @@
     <title>First-Person Playground</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
-      body, html {
+      body,
+      html {
         margin: 0;
         padding: 0;
         overflow: hidden;
@@ -51,7 +52,8 @@
         border-radius: 8px;
         color: white;
       }
-      #info, #controls {
+      #info,
+      #controls {
         position: absolute;
         padding: 10px;
         background: rgba(0, 0, 0, 0.6);
@@ -78,26 +80,30 @@
       </div>
 
       <div id="info">
-        <div>Position: X=<span id="pos-x">0</span> Y=<span id="pos-y">0</span> Z=<span id="pos-z">0</span></div>
-        <div>Rotation: X=<span id="rot-x">0</span> Y=<span id="rot-y">0</span> Z=<span id="rot-z">0</span></div>
+        <div>
+          Position: X=<span id="pos-x">0</span> Y=<span id="pos-y">0</span>
+          Z=<span id="pos-z">0</span>
+        </div>
+        <div>
+          Rotation: X=<span id="rot-x">0</span> Y=<span id="rot-y">0</span>
+          Z=<span id="rot-z">0</span>
+        </div>
       </div>
 
       <div id="controls">
-        <strong>Controls:</strong><br/>
-        W/A/S/D - Move<br/>
-        Space - Jump<br/>
-        Shift - Sprint<br/>
-        Mouse - Look<br/>
+        <strong>Controls:</strong><br />
+        W/A/S/D - Move<br />
+        Space - Jump<br />
+        Shift - Sprint<br />
+        Mouse - Look<br />
         Enter - Lock pointer
       </div>
     </div>
 
     <!-- Add Three.js -->
-    <script type="module">
-
-    </script>
+    <script type="module"></script>
 
     <!-- Main game logic -->
-    <script type="module" src="FPP.js"></script>
+    <script type="module" src="shooting/main.js"></script>
   </body>
 </html>

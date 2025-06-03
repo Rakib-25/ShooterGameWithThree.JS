@@ -1,19 +1,10 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { addShootingTarget } from './target';
 window.THREE = THREE; // Make it global so your FPP.js can access
 
-// Add these variables at the top
-let cameraParent, playerModel, mixer, clock, actions;
-const animationSettings = {
-  idle: { weight: 1 },
-  walk: { weight: 0 },
-  run: { weight: 0 },
-};
-
 // Main variables
-let scene, camera, renderer;
+let scene, camera, renderer, clock;
 let keyState = {};
-let objects = [];
 clock = new THREE.Clock();
 
 // Camera rotation variables
@@ -32,12 +23,6 @@ const startScreen = document.getElementById('start-screen');
 const startButton = document.getElementById('start-button');
 const infoPanel = document.getElementById('info');
 const controlsPanel = document.getElementById('controls');
-const posX = document.getElementById('pos-x');
-const posY = document.getElementById('pos-y');
-const posZ = document.getElementById('pos-z');
-const rotX = document.getElementById('rot-x');
-const rotY = document.getElementById('rot-y');
-const rotZ = document.getElementById('rot-z');
 
 // Initialize the scene
 function init() {
@@ -46,10 +31,6 @@ function init() {
   scene.background = new THREE.Color(0x0a192f);
   scene.fog = new THREE.Fog(0x0a192f, 20, 100);
 
-  // Create camera parent for player
-  cameraParent = new THREE.Group();
-  scene.add(cameraParent);
-
   // Camera setup
   camera = new THREE.PerspectiveCamera(
     75,
@@ -57,8 +38,7 @@ function init() {
     0.1,
     1000
   );
-  camera.position.set(0, 1.6, 5); // Position behind player
-  cameraParent.add(camera);
+  camera.position.set(0, 1.6, 5);
 
   // Create renderer
   renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -70,7 +50,7 @@ function init() {
   // Add lighting
   addLighting();
 
-  // Add environment
+  // Add environment (ground, grid, and target only)
   createEnvironment();
 
   // Event listeners
@@ -84,45 +64,6 @@ function init() {
       startScreen.style.display = 'flex';
     }, 500);
   }, 1500);
-}
-// GLTF Loader for player model
-function loadPlayerModel() {
-  const loader = new GLTFLoader();
-  loader.load('./models/gltf/Soldier.glb', function (gltf) {
-    playerModel = gltf.scene;
-
-    // Position and scale the model
-    playerModel.position.set(0, -0.5, 0);
-    playerModel.scale.set(0.5, 0.5, 0.5);
-    playerModel.rotation.y = Math.PI; // Rotate to face forward
-
-    // Add to camera parent
-    cameraParent.add(playerModel);
-
-    // Setup animations
-    mixer = new THREE.AnimationMixer(playerModel);
-    const animations = gltf.animations;
-
-    actions = {
-      idle: mixer.clipAction(animations[0]),
-      walk: mixer.clipAction(animations[3]),
-      run: mixer.clipAction(animations[1]),
-    };
-
-    // Activate all actions
-    Object.values(actions).forEach((action) => {
-      action.play();
-    });
-
-    // Set initial weights
-    setAnimationWeight('idle', 1);
-  });
-}
-
-// Animation helper function
-function setAnimationWeight(name, weight) {
-  animationSettings[name].weight = weight;
-  actions[name].setEffectiveWeight(weight);
 }
 
 // Add lighting to the scene
@@ -155,7 +96,7 @@ function addLighting() {
   scene.add(pointLight);
 }
 
-// Create the environment
+// Create the environment (ground, grid, and target only)
 function createEnvironment() {
   // Create ground
   const groundGeometry = new THREE.PlaneGeometry(100, 100);
@@ -176,44 +117,8 @@ function createEnvironment() {
   gridHelper.material.transparent = true;
   scene.add(gridHelper);
 
-  // Create random buildings
-  const buildingGeometry = new THREE.BoxGeometry(1, 1, 1);
-
-  for (let i = 0; i < 50; i++) {
-    const height = Math.random() * 5 + 1;
-    const buildingMaterial = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(Math.random() * 0xffffff),
-      metalness: 0.3,
-      roughness: 0.6,
-    });
-
-    const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
-    building.scale.set(1, height, 1);
-    building.position.set(
-      (Math.random() - 0.5) * 80,
-      height / 2 - 0.5,
-      (Math.random() - 0.5) * 80
-    );
-    building.castShadow = true;
-    building.receiveShadow = true;
-    scene.add(building);
-    objects.push(building);
-  }
-
-  // Create player sphere
-  const sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-  const sphereMaterial = new THREE.MeshStandardMaterial({
-    color: 0xff0066,
-    emissive: 0xff0066,
-    emissiveIntensity: 0.3,
-    metalness: 0.7,
-    roughness: 0.2,
-  });
-  const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-  sphere.position.set(0, 0.5, 0);
-  sphere.castShadow = true;
-  scene.add(sphere);
-  objects.push(sphere);
+  // Add a shooting target
+  addShootingTarget(scene);
 }
 
 // Set up event listeners
@@ -229,12 +134,10 @@ function setupEventListeners() {
   // Pointer lock change event
   document.addEventListener('pointerlockchange', () => {
     if (document.pointerLockElement === renderer.domElement) {
-      // Pointer is locked
       infoPanel.style.opacity = '0.5';
       controlsPanel.style.opacity = '0.5';
       document.addEventListener('mousemove', onMouseMove);
     } else {
-      // Pointer is unlocked
       infoPanel.style.opacity = '1';
       controlsPanel.style.opacity = '1';
       document.removeEventListener('mousemove', onMouseMove);
@@ -243,14 +146,9 @@ function setupEventListeners() {
 
   // Mouse movement handler
   function onMouseMove(event) {
-    // Calculate rotation based on mouse movement
     yaw -= event.movementX * sensitivity;
     pitch -= event.movementY * sensitivity;
-
-    // Limit pitch to prevent flipping
     pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
-
-    // Update camera rotation
     camera.rotation.set(pitch, yaw, 0, 'YXZ');
   }
 
@@ -342,35 +240,6 @@ function handleMovement(delta) {
   if (velocity.length() < 0.001) {
     velocity.set(0, 0, 0);
   }
-
-  const isMoving = velocity.length() > 0.01;
-  const isRunning = keyState['shift'] && isMoving;
-  if (isRunning) {
-    setAnimationWeight('run', 1);
-    setAnimationWeight('walk', 0);
-    setAnimationWeight('idle', 0);
-  } else if (isMoving) {
-    setAnimationWeight('run', 0);
-    setAnimationWeight('walk', 1);
-    setAnimationWeight('idle', 0);
-  } else {
-    setAnimationWeight('run', 0);
-    setAnimationWeight('walk', 0);
-    setAnimationWeight('idle', 1);
-  }
-}
-
-// Update status display
-function updateStatusDisplay() {
-  // Position
-  posX.textContent = camera.position.x.toFixed(2);
-  posY.textContent = camera.position.y.toFixed(2);
-  posZ.textContent = camera.position.z.toFixed(2);
-
-  // Rotation
-  rotX.textContent = THREE.MathUtils.radToDeg(pitch).toFixed(2);
-  rotY.textContent = THREE.MathUtils.radToDeg(yaw).toFixed(2);
-  rotZ.textContent = THREE.MathUtils.radToDeg(camera.rotation.z).toFixed(2);
 }
 
 // Animate function
@@ -380,28 +249,8 @@ function animate() {
   // Calculate time delta for smooth movement
   const delta = Math.min(0.1, clock.getDelta());
 
-  // Update animations
-  if (mixer) {
-    mixer.update(delta);
-  }
-
   // Handle camera movement
   handleMovement(delta);
-
-  // Update status display
-  updateStatusDisplay();
-
-  // Animate objects
-  const time = clock.getElapsedTime();
-  objects.forEach((obj, index) => {
-    if (index > 0) {
-      // Skip player sphere
-      obj.rotation.y = time * 0.2 + index;
-      obj.position.y =
-        Math.sin(time * 0.5 + index) * 0.2 +
-        (obj.position.y - Math.sin((time - delta) * 0.5 + index) * 0.2);
-    }
-  });
 
   // Render scene
   renderer.render(scene, camera);
@@ -410,11 +259,8 @@ function animate() {
 // Initialize everything
 function setup() {
   init();
-  loadPlayerModel();
-  // ... other setup ...
 }
 
 // Start the application
 setup();
-// Start animation loop after initialization
 setTimeout(animate, 100);
