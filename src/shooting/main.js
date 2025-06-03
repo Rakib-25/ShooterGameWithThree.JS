@@ -1,6 +1,15 @@
 import * as THREE from 'three';
-import { ShootingTarget } from './target.js';
-window.THREE = THREE; // Make it global so your FPP.js can access
+import { ShootingTarget } from './components/target.js';
+import { createScene } from './components/scene.js';
+import { createCamera } from './components/camera.js';
+import {
+  createAmbientLight,
+  createDirectionalLight,
+  createHemisphereLight,
+  createPointLight,
+} from './components/light.js';
+import { Ground } from './components/ground.js';
+window.THREE = THREE;
 
 // Main variables
 let scene, camera, renderer, clock;
@@ -27,18 +36,10 @@ const controlsPanel = document.getElementById('controls');
 // Initialize the scene
 function init() {
   // Create scene
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a192f);
-  scene.fog = new THREE.Fog(0x0a192f, 20, 100);
+  scene = createScene(0x0a192f, 20, 100);
 
   // Camera setup
-  camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-  );
-  camera.position.set(0, 1.6, 5);
+  camera = createCamera();
 
   // Create renderer
   renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -68,56 +69,25 @@ function init() {
 
 // Add lighting to the scene
 function addLighting() {
-  // Ambient light
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
-  scene.add(ambientLight);
-
-  // Directional light (sun)
-  const sunLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  sunLight.position.set(10, 20, 10);
-  sunLight.castShadow = true;
-  sunLight.shadow.mapSize.width = 2048;
-  sunLight.shadow.mapSize.height = 2048;
-  sunLight.shadow.camera.near = 0.5;
-  sunLight.shadow.camera.far = 50;
-  sunLight.shadow.camera.left = -20;
-  sunLight.shadow.camera.right = 20;
-  sunLight.shadow.camera.top = 20;
-  sunLight.shadow.camera.bottom = -20;
-  scene.add(sunLight);
-
-  // Hemisphere light for more natural outdoor lighting
-  const hemiLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 0.5);
-  scene.add(hemiLight);
-
-  // Add a subtle point light for additional ambiance
-  const pointLight = new THREE.PointLight(0xff6600, 0.5, 50);
-  pointLight.position.set(5, 5, -5);
-  scene.add(pointLight);
+  scene.add(createAmbientLight());
+  scene.add(createDirectionalLight());
+  scene.add(createHemisphereLight());
+  scene.add(createPointLight());
 }
 
 // Create the environment (ground, grid, and target only)
 function createEnvironment() {
-  // Create ground
-  const groundGeometry = new THREE.PlaneGeometry(100, 100);
-  const groundMaterial = new THREE.MeshStandardMaterial({
-    color: 0x2a5b7c,
-    roughness: 0.8,
-    metalness: 0.2,
-  });
-  const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.5;
-  ground.receiveShadow = true;
+  // Add ground
+  const ground = new Ground();
   scene.add(ground);
 
-  // Grid helper
-  const gridHelper = new THREE.GridHelper(50, 50, 0xffffff, 0xffffff);
-  gridHelper.material.opacity = 0.2;
-  gridHelper.material.transparent = true;
-  scene.add(gridHelper);
+  // Add grind helper if needed
+  // const gridHelper = new THREE.GridHelper(50, 50, 0xffffff, 0xffffff);
+  // gridHelper.material.opacity = 0.2;
+  // gridHelper.material.transparent = true;
+  // scene.add(gridHelper);
 
-  // Create and add a target object to the scene
+  // Add target
   const target = new ShootingTarget();
   scene.add(target);
 }
