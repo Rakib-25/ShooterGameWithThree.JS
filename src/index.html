@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>First-Person Playground</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body, html {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+        background-color: #0a192f;
+        color: white;
+      }
+      #container {
+        width: 100vw;
+        height: 100vh;
+        display: block;
+        position: relative;
+      }
+      #loading {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        color: #fff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 2em;
+        z-index: 10;
+        transition: opacity 0.5s;
+      }
+      #start-screen {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 9;
+      }
+      #start-button {
+        padding: 20px 40px;
+        font-size: 1.5em;
+        cursor: pointer;
+        background: #ff0066;
+        border: none;
+        border-radius: 8px;
+        color: white;
+      }
+      #info, #controls {
+        position: absolute;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.6);
+        font-size: 14px;
+        pointer-events: none;
+        opacity: 1;
+        transition: opacity 0.3s;
+      }
+      #info {
+        top: 10px;
+        left: 10px;
+      }
+      #controls {
+        bottom: 10px;
+        left: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container">
+      <div id="loading">Loading...</div>
+      <div id="start-screen">
+        <button id="start-button">Start Game</button>
+      </div>
+
+      <div id="info">
+        <div>Position: X=<span id="pos-x">0</span> Y=<span id="pos-y">0</span> Z=<span id="pos-z">0</span></div>
+        <div>Rotation: X=<span id="rot-x">0</span> Y=<span id="rot-y">0</span> Z=<span id="rot-z">0</span></div>
+      </div>
+
+      <div id="controls">
+        <strong>Controls:</strong><br/>
+        W/A/S/D - Move<br/>
+        Space - Jump<br/>
+        Shift - Sprint<br/>
+        Mouse - Look<br/>
+        Enter - Lock pointer
+      </div>
+    </div>
+
+    <!-- Add Three.js -->
+    <script type="module">
+
+    </script>
+
+    <!-- Main game logic -->
+    <script type="module" src="FPP.js"></script>
+  </body>
+</html>

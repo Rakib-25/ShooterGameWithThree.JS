@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Camera Controls with Three.js</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 300px;
+            z-index: 10;
+        }
+        
+        #info h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #ff6ec7;
+            text-align: center;
+        }
+        
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            gap: 20px;
+            z-index: 10;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .control-group h2 {
+            margin-bottom: 8px;
+            color: #00c3ff;
+            font-size: 18px;
+        }
+        
+        .key {
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid #00c3ff;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 5px;
+            box-shadow: 0 0 10px rgba(0, 195, 255, 0.5);
+        }
+        
+        .key-row {
+            display: flex;
+            justify-content: center;
+        }
+        
+        #status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 10;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 100;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 5px solid #00c3ff;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="info">
+            <h1>3D Camera Controls</h1>
+            <p>Move your mouse to control the camera direction. Use WASD keys to move:</p>
+            <ul>
+                <li><strong>W</strong> - Move forward</li>
+                <li><strong>A</strong> - Move left</li>
+                <strong>S</strong> - Move backward</li>
+                <li><strong>D</strong> - Move right</li>
+            </ul>
+            <p>Camera position and rotation update in real-time based on your input.</p>
+        </div>
+        
+        <div id="controls">
+            <div class="control-group">
+                <h2>Movement</h2>
+                <div class="key-row">
+                    <div class="key">W</div>
+                </div>
+                <div class="key-row">
+                    <div class="key">A</div>
+                    <div class="key">S</div>
+                    <div class="key">D</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="status">
+            <h2>Camera Status</h2>
+            <p>Position: <span id="pos-x">0.00</span>, <span id="pos-y">0.00</span>, <span id="pos-z">0.00</span></p>
+            <p>Rotation: <span id="rot-x">0.00</span>, <span id="rot-y">0.00</span>, <span id="rot-z">0.00</span></p>
+            <p>Look Direction: <span id="look-x">0.00</span>, <span id="look-y">0.00</span>, <span id="look-z">0.00</span></p>
+        </div>
+        
+        <div id="loading">
+            <div class="spinner"></div>
+            <p>Loading 3D environment...</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Main variables
+        let scene, camera, renderer;
+        let cameraDirection = new THREE.Vector3();
+        let mouse = new THREE.Vector2(0, 0);
+        let speed = 0.2;
+        let keyState = {};
+        let objects = [];
+        let clock = new THREE.Clock();
+        
+        // DOM elements
+        const loadingScreen = document.getElementById('loading');
+        const posX = document.getElementById('pos-x');
+        const posY = document.getElementById('pos-y');
+        const posZ = document.getElementById('pos-z');
+        const rotX = document.getElementById('rot-x');
+        const rotY = document.getElementById('rot-y');
+        const rotZ = document.getElementById('rot-z');
+        const lookX = document.getElementById('look-x');
+        const lookY = document.getElementById('look-y');
+        const lookZ = document.getElementById('look-z');
+        
+        // Initialize the scene
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a192f);
+            scene.fog = new THREE.Fog(0x0a192f, 20, 100);
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 5);
+            
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('container').appendChild(renderer.domElement);
+            
+            // Add lighting
+            addLighting();
+            
+            // Add environment
+            createEnvironment();
+            
+            // Event listeners
+            setupEventListeners();
+            
+            // Hide loading screen
+            setTimeout(() => {
+                loadingScreen.style.opacity = '0';
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                }, 500);
+            }, 1500);
+            
+            // Start animation loop
+            animate();
+        }
+        
+        // Add lighting to the scene
+        function addLighting() {
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+            scene.add(ambientLight);
+            
+            // Directional light
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 7);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 1024;
+            directionalLight.shadow.mapSize.height = 1024;
+            scene.add(directionalLight);
+            
+            // Hemisphere light
+            const hemiLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 0.5);
+            scene.add(hemiLight);
+        }
+        
+        // Create the environment
+        function createEnvironment() {
+            // Create ground
+            const groundGeometry = new THREE.PlaneGeometry(100, 100);
+            const groundMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x2a5b7c,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.y = -0.5;
+            ground.receiveShadow = true;
+            scene.add(ground);
+            
+            // Grid helper
+            const gridHelper = new THREE.GridHelper(50, 50, 0xffffff, 0xffffff);
+            gridHelper.material.opacity = 0.2;
+            gridHelper.material.transparent = true;
+            scene.add(gridHelper);
+            
+            // Create random buildings
+            const buildingGeometry = new THREE.BoxGeometry(1, 1, 1);
+            
+            for (let i = 0; i < 50; i++) {
+                const height = Math.random() * 5 + 1;
+                const buildingMaterial = new THREE.MeshStandardMaterial({ 
+                    color: new THREE.Color(Math.random() * 0xffffff),
+                    metalness: 0.3,
+                    roughness: 0.6
+                });
+                
+                const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+                building.scale.set(1, height, 1);
+                building.position.set(
+                    (Math.random() - 0.5) * 80,
+                    height / 2 - 0.5,
+                    (Math.random() - 0.5) * 80
+                );
+                building.castShadow = true;
+                building.receiveShadow = true;
+                scene.add(building);
+                objects.push(building);
+            }
+            
+            // Create player sphere
+            const sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+            const sphereMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xff0066,
+                emissive: 0xff0066,
+                emissiveIntensity: 0.3,
+                metalness: 0.7,
+                roughness: 0.2
+            });
+            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            sphere.position.set(0, 0.5, 0);
+            sphere.castShadow = true;
+            scene.add(sphere);
+            objects.push(sphere);
+        }
+        
+        // Set up event listeners
+        function setupEventListeners() {
+            // Mouse movement
+            window.addEventListener('mousemove', (event) => {
+                // Normalize mouse position to -1 to +1
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                // Calculate look direction based on mouse position
+                updateCameraLookDirection();
+            });
+            
+            // Keyboard events
+            window.addEventListener('keydown', (event) => {
+                keyState[event.key.toLowerCase()] = true;
+            });
+            
+            window.addEventListener('keyup', (event) => {
+                keyState[event.key.toLowerCase()] = false;
+            });
+            
+            // Window resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+        
+        // Update camera look direction based on mouse position
+        function updateCameraLookDirection() {
+            // Create a vector pointing in the direction the mouse is pointing
+            const vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
+            vector.unproject(camera);
+            
+            // Calculate direction vector
+            const dir = vector.sub(camera.position).normalize();
+            
+            // Calculate distance to look ahead
+            const distance = 10;
+            const lookAtPoint = camera.position.clone().add(dir.multiplyScalar(distance));
+            
+            // Make camera look at that point
+            camera.lookAt(lookAtPoint);
+            
+            // Update camera direction vector
+            camera.getWorldDirection(cameraDirection);
+        }
+        
+        // Handle camera movement based on keyboard input
+        function handleMovement() {
+            if (keyState['w']) {
+                camera.position.addScaledVector(cameraDirection, speed);
+            }
+            if (keyState['s']) {
+                camera.position.addScaledVector(cameraDirection, -speed);
+            }
+            if (keyState['a']) {
+                // Calculate left vector perpendicular to camera direction
+                const leftVector = new THREE.Vector3();
+                leftVector.crossVectors(camera.up, cameraDirection).normalize();
+                camera.position.addScaledVector(leftVector, speed);
+            }
+            if (keyState['d']) {
+                // Calculate right vector perpendicular to camera direction
+                const rightVector = new THREE.Vector3();
+                rightVector.crossVectors(cameraDirection, camera.up).normalize();
+                camera.position.addScaledVector(rightVector, speed);
+            }
+            
+            // Keep camera above ground
+            if (camera.position.y < 1) {
+                camera.position.y = 1;
+            }
+        }
+        
+        // Update status display
+        function updateStatusDisplay() {
+            // Position
+            posX.textContent = camera.position.x.toFixed(2);
+            posY.textContent = camera.position.y.toFixed(2);
+            posZ.textContent = camera.position.z.toFixed(2);
+            
+            // Rotation
+            const euler = new THREE.Euler();
+            euler.setFromQuaternion(camera.quaternion);
+            rotX.textContent = THREE.MathUtils.radToDeg(euler.x).toFixed(2);
+            rotY.textContent = THREE.MathUtils.radToDeg(euler.y).toFixed(2);
+            rotZ.textContent = THREE.MathUtils.radToDeg(euler.z).toFixed(2);
+            
+            // Look direction
+            camera.getWorldDirection(cameraDirection);
+            lookX.textContent = cameraDirection.x.toFixed(2);
+            lookY.textContent = cameraDirection.y.toFixed(2);
+            lookZ.textContent = cameraDirection.z.toFixed(2);
+        }
+        
+        // Animate function
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Handle camera movement
+            handleMovement();
+            
+            // Update camera look direction
+            updateCameraLookDirection();
+            
+            // Update status display
+            updateStatusDisplay();
+            
+            // Animate objects
+            const time = clock.getElapsedTime();
+            objects.forEach((obj, index) => {
+                if (index > 0) { // Skip player sphere
+                    obj.rotation.y = time * 0.2 + index;
+                    obj.position.y = Math.sin(time * 0.5 + index) * 0.2 + obj.position.y;
+                }
+            });
+            
+            // Render scene
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize the application
+        init();
+    </script>
+</body>
+</html>
