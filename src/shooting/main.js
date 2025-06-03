@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { addShootingTarget } from './target';
+import { ShootingTarget } from './target.js';
 window.THREE = THREE; // Make it global so your FPP.js can access
 
 // Main variables
@@ -117,8 +117,9 @@ function createEnvironment() {
   gridHelper.material.transparent = true;
   scene.add(gridHelper);
 
-  // Add a shooting target
-  addShootingTarget(scene);
+  // Create and add a target object to the scene
+  const target = new ShootingTarget();
+  scene.add(target);
 }
 
 // Set up event listeners
