@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
 /**
  * Dart shooting target as a class component (extends THREE.Group).
@@ -14,6 +14,7 @@ export class ShootingTarget extends THREE.Group {
     );
     outer.rotation.x = Math.PI / 2;
     outer.receiveShadow = true;
+    outer.castShadow = true; // Add this
     this.add(outer);
 
     // Middle ring (red)
@@ -22,6 +23,8 @@ export class ShootingTarget extends THREE.Group {
       new THREE.MeshStandardMaterial({ color: 0xff3333 })
     );
     middle.rotation.x = Math.PI / 2;
+    middle.receiveShadow = true; // Add this
+    middle.castShadow = true; // Add this
     this.add(middle);
 
     // Inner ring (blue)
@@ -30,6 +33,8 @@ export class ShootingTarget extends THREE.Group {
       new THREE.MeshStandardMaterial({ color: 0x3366ff })
     );
     inner.rotation.x = Math.PI / 2;
+    inner.receiveShadow = true; // Add this
+    inner.castShadow = true; // Add this
     this.add(inner);
 
     // Bullseye (yellow)
@@ -38,6 +43,8 @@ export class ShootingTarget extends THREE.Group {
       new THREE.MeshStandardMaterial({ color: 0xffff00 })
     );
     bullseye.rotation.x = Math.PI / 2;
+    bullseye.receiveShadow = true; // Add this
+    bullseye.castShadow = true; // Add this
     this.add(bullseye);
 
     // Set initial position
