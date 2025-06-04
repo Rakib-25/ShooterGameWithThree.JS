@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { World } from './systems/World.js';
+import { Arrow } from './components/arrow.js';
 
 // Main application class
 class ShootingRange {
@@ -44,7 +45,7 @@ class ShootingRange {
   }
 
   shootArrow() {
-    const arrow = this.createArrow();
+    const arrow = new Arrow();
     arrow.position.copy(this.camera.position);
 
     const direction = new THREE.Vector3();
@@ -55,16 +56,6 @@ class ShootingRange {
     arrow.userData.velocity = direction.clone().multiplyScalar(1);
     this.scene.add(arrow);
     this.arrows.push(arrow);
-  }
-
-  createArrow() {
-    const geometry = new THREE.CylinderGeometry(0.05, 0.05, 2, 8);
-    const material = new THREE.MeshStandardMaterial({ color: 0xcccc00 });
-    const arrow = new THREE.Mesh(geometry, material);
-    arrow.castShadow = true;
-    arrow.receiveShadow = true;
-    geometry.rotateX(Math.PI / 2); // Align cylinder to point forward
-    return arrow;
   }
 
   setupUI() {
@@ -219,6 +210,11 @@ class ShootingRange {
       // Remove arrow if too far
       if (arrow.position.distanceTo(this.camera.position) > 100) {
         this.scene.remove(arrow);
+
+        if (typeof arrow.dispose === 'function') {
+          arrow.dispose(); // Free geometry/material GPU memory
+        }
+
         this.arrows.splice(i, 1);
       }
     }
