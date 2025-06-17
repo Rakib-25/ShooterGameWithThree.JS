@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { World } from './systems/World.js';
 import { Arrow } from './components/arrow.js';
+import { ShootingTarget } from './components/target.js';
 
 // Main application class
 class ShootingRange {
@@ -53,7 +54,11 @@ class ShootingRange {
     const target = this.camera.position.clone().add(direction);
     arrow.lookAt(target);
 
-    arrow.userData.velocity = direction.clone().multiplyScalar(1);
+    arrow.userData = {
+      velocity: direction.clone().multiplyScalar(1),
+      isStuck: false,
+    };
+
     this.scene.add(arrow);
     this.arrows.push(arrow);
   }
@@ -203,23 +208,84 @@ class ShootingRange {
     // Move arrows
     for (let i = this.arrows.length - 1; i >= 0; i--) {
       const arrow = this.arrows[i];
-      arrow.position.add(
-        arrow.userData.velocity.clone().multiplyScalar(delta * 20)
-      );
 
-      // Remove arrow if too far
-      if (arrow.position.distanceTo(this.camera.position) > 100) {
-        this.scene.remove(arrow);
+      if (!arrow.userData.isStuck) {
+        // Only move arrows that haven't hit anything
+        arrow.position.add(
+          arrow.userData.velocity.clone().multiplyScalar(delta * 20)
+        );
 
-        if (typeof arrow.dispose === 'function') {
-          arrow.dispose(); // Free geometry/material GPU memory
+        // Check for target collission
+        this.checkArrowCollision(arrow);
+
+        // Remove if too far
+        if (arrow.position.distanceTo(this.camera.position) > 100) {
+          this.scene.remove(arrow);
+          this.arrows.splice(i, 1);
         }
-
-        this.arrows.splice(i, 1);
       }
     }
 
     this.renderer.render(this.scene, this.camera);
+  }
+
+  checkArrowCollision(arrow) {
+    // Create a raycaster from the arrow's position in its direction
+    const raycaster = new THREE.Raycaster(
+      arrow.position,
+      arrow.userData.velocity.clone().normalize()
+    );
+
+    // Set a small look-ahead distance
+    raycaster.far = 0.5;
+
+    // Check for intersections with target colliders
+    const targets = [];
+
+    this.scene.traverse((obj) => {
+      if (obj.userData.isTargetCollider) {
+        targets.push(obj);
+      }
+    });
+
+    // this.scene.children.filter(
+    //   (obj) => obj instanceof ShootingTarget
+    // );
+
+    const intersects = raycaster.intersectObjects(targets, true);
+
+    if (intersects.length > 0) {
+      // Arrow hit a target!
+      arrow.userData.isStuck = true;
+
+      // Stop the arrow's movement
+      arrow.userData.velocity.set(0, 0, 0);
+
+      // Find the actual target (parent of the collider)
+      let target = intersects[0].object;
+      while (target && !(target instanceof ShootingTarget)) {
+        target = target.parent;
+      }
+
+      if (target) {
+        // Store original arrow rotation
+        const arrowRotation = arrow.rotation.clone();
+
+        // Parent the arrow to the target
+        target.attach(arrow);
+
+        // Restore original rotation (attach() changes rotation)
+        arrow.rotation.copy(arrowRotation);
+
+        // Position the arrow at the hit point
+        arrow.position.copy(intersects[0].point);
+
+        // Offset slightly to make sure it's visible
+        arrow.position.add(
+          arrow.userData.velocity.clone().normalize().multiplyScalar(0.1)
+        );
+      }
+    }
   }
 
   onMouseMove(event) {
