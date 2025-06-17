@@ -27,11 +27,11 @@ export class Arrow extends THREE.Mesh {
   update(delta) {
     if (!this.isActive) return;
 
+
     // Apply velocity
     this.position.add(this.velocity.clone().multiplyScalar(delta * 20));
 
-    // Apply gravity
-    this.velocity.y -= 0.05 * delta * 60;
+
 
     // Rotate arrow based on velocity
     if (this.velocity.lengthSq() > 0.01) {

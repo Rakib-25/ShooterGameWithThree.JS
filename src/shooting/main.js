@@ -34,6 +34,10 @@ class ShootingRange {
     this.infoPanel = null;
     this.controlsPanel = null;
 
+    // Physics constants
+    this.arrowGravity = 0.02; // Gravity force
+    this.initialArrowSpeed = 1; // Initial speed of the arrow
+
     this.init();
   }
 
@@ -47,15 +51,37 @@ class ShootingRange {
     const arrow = this.createArrow();
     arrow.position.copy(this.camera.position);
 
+    // Get camera direction
     const direction = new THREE.Vector3();
     this.camera.getWorldDirection(direction);
-    const target = this.camera.position.clone().add(direction);
-    arrow.lookAt(target);
+    
+    // Calculate initial velocity based on pitch angle
+    const horizontalDirection = new THREE.Vector3(direction.x, 0, direction.z).normalize();
+    const verticalAngle = this.pitch; // Camera pitch is the launch angle
+    
+    // Calculate velocity components using projectile motion physics
+    const horizontalSpeed = this.initialArrowSpeed * Math.cos(verticalAngle);
+    const verticalSpeed = this.initialArrowSpeed * Math.sin(verticalAngle);
+    
+    // Set initial velocity components
+    arrow.userData.velocity = new THREE.Vector3(
+      horizontalDirection.x * horizontalSpeed,
+      verticalSpeed,
+      horizontalDirection.z * horizontalSpeed
+    );
 
-    arrow.userData.velocity = direction.clone().multiplyScalar(1);
+    // Set initial rotation based on launch angle
+    const launchDirection = horizontalDirection.clone();
+    launchDirection.y = Math.tan(verticalAngle);
+    arrow.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      launchDirection.normalize()
+    );
+
     this.scene.add(arrow);
     this.arrows.push(arrow);
   }
+
 
   createArrow() {
     const geometry = new THREE.CylinderGeometry(0.05, 0.05, 2, 8);
@@ -63,7 +89,7 @@ class ShootingRange {
     const arrow = new THREE.Mesh(geometry, material);
     arrow.castShadow = true;
     arrow.receiveShadow = true;
-    geometry.rotateX(Math.PI / 2); // Align cylinder to point forward
+    // geometry.rotateX(Math.PI / 2); // Align cylinder to point forward
     return arrow;
   }
 
@@ -212,12 +238,23 @@ class ShootingRange {
     // Move arrows
     for (let i = this.arrows.length - 1; i >= 0; i--) {
       const arrow = this.arrows[i];
+            // Apply gravity to arrow's velocity
+      arrow.userData.velocity.y -= this.arrowGravity * delta * 20;
       arrow.position.add(
         arrow.userData.velocity.clone().multiplyScalar(delta * 20)
       );
 
+            // NEW: Update arrow rotation to match velocity direction
+      if (arrow.userData.velocity.lengthSq() > 0.01) {
+        const velocityDirection = arrow.userData.velocity.clone().normalize();
+        arrow.quaternion.setFromUnitVectors(
+          new THREE.Vector3(0, 1, 0), // Original cylinder orientation
+          velocityDirection
+        );
+      }
+
       // Remove arrow if too far
-      if (arrow.position.distanceTo(this.camera.position) > 100) {
+      if (arrow.position.distanceTo(this.camera.position) > 100 || arrow.position.y < 0) {
         this.scene.remove(arrow);
         this.arrows.splice(i, 1);
       }
