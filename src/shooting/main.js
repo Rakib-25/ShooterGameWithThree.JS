@@ -236,54 +236,59 @@ class ShootingRange {
       arrow.userData.velocity.clone().normalize()
     );
 
-    // Set a small look-ahead distance
-    raycaster.far = 0.5;
+    // Set a look-ahead distance based on arrow speed
+    raycaster.far = arrow.userData.velocity.length() * 0.1 + 0.2;
 
     // Check for intersections with target colliders
-    const targets = [];
-
+    const colliders = [];
     this.scene.traverse((obj) => {
-      if (obj.userData.isTargetCollider) {
-        targets.push(obj);
-      }
+      if (obj.userData.isTargetCollider) colliders.push(obj);
     });
 
-    // this.scene.children.filter(
-    //   (obj) => obj instanceof ShootingTarget
-    // );
-
-    const intersects = raycaster.intersectObjects(targets, true);
+    const intersects = raycaster.intersectObjects(colliders, true);
 
     if (intersects.length > 0) {
-      // Arrow hit a target!
+      const hit = intersects[0];
       arrow.userData.isStuck = true;
-
-      // Stop the arrow's movement
       arrow.userData.velocity.set(0, 0, 0);
 
-      // Find the actual target (parent of the collider)
-      let target = intersects[0].object;
+      // Find the actual ShootingTarget parent
+      let target = hit.object;
       while (target && !(target instanceof ShootingTarget)) {
         target = target.parent;
       }
 
       if (target) {
-        // Store original arrow rotation
-        const arrowRotation = arrow.rotation.clone();
+        // Calculate position in target's local space
+        const targetWorldPosition = new THREE.Vector3();
+        target.getWorldPosition(targetWorldPosition);
 
-        // Parent the arrow to the target
-        target.attach(arrow);
+        const hitWorldPosition = hit.point;
+        const localPosition = new THREE.Vector3();
+        target.worldToLocal(localPosition.copy(hitWorldPosition));
 
-        // Restore original rotation (attach() changes rotation)
-        arrow.rotation.copy(arrowRotation);
-
-        // Position the arrow at the hit point
-        arrow.position.copy(intersects[0].point);
-
-        // Offset slightly to make sure it's visible
-        arrow.position.add(
-          arrow.userData.velocity.clone().normalize().multiplyScalar(0.1)
+        // Calculate rotation in target's local space
+        const arrowWorldDirection = arrow.getWorldDirection(
+          new THREE.Vector3()
         );
+        const localDirection = new THREE.Vector3();
+        target
+          .worldToLocal(
+            localDirection.copy(arrowWorldDirection.add(hitWorldPosition))
+          )
+          .sub(localPosition);
+
+        // Parent to target
+        target.add(arrow);
+
+        // Set position and rotation in target's local space
+        arrow.position.copy(localPosition);
+
+        // Push arrow slightly in the direction of impact
+        arrow.position.add(localDirection.normalize().multiplyScalar(0.1));
+
+        // Set correct rotation
+        arrow.lookAt(arrow.position.clone().add(localDirection));
       }
     }
   }
